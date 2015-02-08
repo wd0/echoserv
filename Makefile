@@ -1,17 +1,14 @@
-CC = clang
+CC = cc
 CFLAGS = -Wall -Wpedantic -Wextra -ansi
 SRC = echo.c
-NAME = echo
+NAME = echoserv
 
 
 all: build
 
 
-build: clean
+build: 
 	${CC} -o ${NAME} ${CFLAGS} ${SRC} 
-
-test: build
-	./${NAME} 
 
 clean:
 	rm -f ${NAME}

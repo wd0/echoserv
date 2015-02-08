@@ -1,42 +1,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
-enum { NPORT = 2800 };
-enum { DEFAULTBUF = 1024 };
-enum { NLISTEN = 8 };
-
-void *
-emalloc(size_t n) {
-    void *m = malloc(n);
-    if (m == NULL) { 
-	perror("malloc");
-	exit(1);
-    }
-    return m;
-}
+enum { PORTNO = 7 };
+enum { CHUNKSIZE = 2048 };
+enum { NLISTEN = 16 };
 
 int
 echo(int sock) {
-    char *echobuf = NULL;
-    int bufsize = DEFAULTBUF;
+    char echobuf[CHUNKSIZE];
     long nread, nsent;
+    long totalsent;
 
-    echobuf = emalloc(bufsize);
-    nread = recv(sock, echobuf, bufsize, 0);
-    if (nread == -1) {
-	perror("recv");
-	close(sock);
-	return -1;
-    } else if (nread == 0) {
-	return 0;
-    } else if (nread > 0) {
+    while ((nread = recv(sock, echobuf, sizeof echobuf, 0)) != 0) {
+	if (nread == -1) {
+	    perror("recv");
+	    return 1;
+	}
 	nsent = send(sock, echobuf, nread, 0);
-	while (nsent != nread) { /* Fix me */
-	    nsent = send(sock, echobuf + nsent, nread - nsent, 0);
+	for (totalsent = nsent; totalsent < nread; totalsent += nsent) {
+	    if (nsent == -1) {
+		perror("send");
+		return 1;
+	    nsent = send(sock, echobuf + totalsent, nread - totalsent, 0);
+	    }
 	}
     }
 
@@ -53,7 +44,7 @@ setup(int argc, char **argv) {
     if (argc > 1) {
 	port = atoi(argv[1]);
     } else {
-	port = NPORT;
+	port = PORTNO;
     }
 
     if ((msock = socket(AF_INET, SOCK_STREAM, 0)) == -1) { 

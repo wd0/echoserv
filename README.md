@@ -1,2 +1,2 @@
 # echoserv
-Imitates the echo protocol.
+Implements the echo protocol.
