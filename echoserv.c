@@ -7,28 +7,27 @@
 #include <sys/socket.h>
 
 enum { PORTNO = 7 };
-enum { CHUNKSIZE = 2048 };
+enum { CHUNKSIZE = 1 };
 enum { NLISTEN = 16 };
 
 int
 echo(int sock) {
     char echobuf[CHUNKSIZE];
-    long nread, nsent;
-    long totalsent;
+    ssize_t nread, nsent;
+    ssize_t totalsent;
 
     while ((nread = recv(sock, echobuf, sizeof echobuf, 0)) != 0) {
-	if (nread == -1) {
-	    perror("recv");
-	    return 1;
-	}
-	nsent = send(sock, echobuf, nread, 0);
-	for (totalsent = nsent; totalsent < nread; totalsent += nsent) {
-	    if (nsent == -1) {
-		perror("send");
-		return 1;
-	    nsent = send(sock, echobuf + totalsent, nread - totalsent, 0);
-	    }
-	}
+        if (nread == -1) {
+            perror("recv");
+            return 1;
+        }
+        for (totalsent = 0; totalsent < nread; totalsent += nsent) {
+            nsent = send(sock, echobuf + totalsent, nread - totalsent, 0);
+            if (nsent == -1) { 
+                perror("send");
+                return 1;
+            }
+        }
     }
 
     return 0;
@@ -41,29 +40,28 @@ setup(int argc, char **argv) {
     socklen_t socksize = sizeof(struct sockaddr);
     short port; 
 
-    if (argc > 1) {
-	port = atoi(argv[1]);
-    } else {
-	port = PORTNO;
-    }
+    if (argc > 1)
+        port = atoi(argv[1]);
+    else 
+        port = PORTNO;
 
     if ((msock = socket(AF_INET, SOCK_STREAM, 0)) == -1) { 
-	perror("socket");
-	return -1;
+        perror("socket");
+        return -1;
     }
     memset(&serv, 0, socksize);
     serv.sin_family = AF_INET;
     serv.sin_addr.s_addr = htonl(INADDR_ANY);
     serv.sin_port = htons(port);
     if (bind(msock, (struct sockaddr *)&serv, socksize) == -1) {
-	perror("bind");
-	return -1;
+        perror("bind");
+        return -1;
     }
     if (listen(msock, NLISTEN) == -1) {
-	perror("listen");
-	return -1;
+        perror("listen");
+        return -1;
     }
-    
+
     return msock;
 }
 
@@ -74,17 +72,17 @@ main(int argc, char **argv) {
     socklen_t socksize = sizeof(struct sockaddr);
 
     if ((msock = setup(argc, argv)) == -1) {
-	return EXIT_FAILURE;
+        return EXIT_FAILURE;
     }
 
     for (;;) {
-	sock = accept(msock, (struct sockaddr *)&remote, &socksize);
-	if (sock == -1) {
-	    perror("accept");
-	    continue;
-	}
-	echo(sock);
-	close(sock);
+        sock = accept(msock, (struct sockaddr *)&remote, &socksize);
+        if (sock == -1) {
+            perror("accept");
+            continue;
+        }
+        echo(sock);
+        close(sock);
     }
 
     close(msock);
